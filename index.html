@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>致秦彻</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" />
+    <style>
+        /* ===== 基础与美学变量 ===== */
+        :root {
+            --paper: #F5F2EB;
+            --paper-dark: #EAE5D9;
+            --ink: #2A2724;
+            --ink-soft: #635F59;
+            --ink-light: #9B9489;
+            --gold: #D4AF37;
+            --gold-light: #F3E5AB;
+            --gold-glow: rgba(212, 175, 55, 0.4);
+            --serif: 'Noto Serif SC', serif;
+            --sans: 'Noto Sans SC', sans-serif;
+            --hand: 'Ma Shan Zheng', cursive;
+            
+            --shadow-sm: 0 4px 12px rgba(42, 39, 36, 0.04);
+            --shadow-md: 0 12px 32px rgba(42, 39, 36, 0.08);
+            --shadow-lg: 0 24px 64px rgba(42, 39, 36, 0.12);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            background: var(--paper); color: var(--ink);
+            font-family: var(--sans); -webkit-font-smoothing: antialiased;
+        }
+        body.locked { position: fixed; width: 100%; height: 100%; }
+        ::selection { background: var(--gold-light); color: var(--ink); }
+
+        /* 全局胶片颗粒/纸张肌理 */
+        body::after {
+            content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+        }
+
+        /* ===== 互动插件：点击游彩星芒 ===== */
+        .click-particle {
+            position: fixed; pointer-events: none; z-index: 9998;
+            font-family: var(--serif); font-size: 16px; user-select: none;
+            animation: particle-float 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes particle-float {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+            50% { opacity: 1; transform: translate(-50%, -80px) scale(1.2) rotate(15deg); }
+            100% { opacity: 0; transform: translate(-50%, -120px) scale(0.8) rotate(30deg); }
+        }
+
+        /* ===== 全局容器 ===== */
+        #app { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: var(--paper); }
+        
+        .stage {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.8s ease, visibility 0.8s ease; z-index: 1; overflow: hidden;
+        }
+        .stage.active { opacity: 1; visibility: visible; z-index: 10; }
+        .stage .inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; position: relative; }
+
+        /* ===== 视频阶段 (影院级UI) ===== */
+        .video-stage {
+            background: radial-gradient(circle at center, #26231F 0%, #0A0908 100%);
+        }
+        .video-stage video {
+            width: 100%; max-width: 90%; height: 100%; max-height: 85%;
+            object-fit: contain; display: block; z-index: 2;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 0 80px rgba(0,0,0,0.5);
+        }
+        
+        .video-stage .caption {
+            position: absolute; bottom: 40px; left: 0; right: 0; text-align: center;
+            color: rgba(255, 255, 255, 0.9); font-family: var(--hand); font-size: 22px;
+            letter-spacing: 2px; z-index: 3; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        /* 优化后的状态按钮 */
+        .skip-btn {
+            position: absolute; top: 28px; right: 28px; z-index: 5;
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8); font-size: 13px; letter-spacing: 2px;
+            padding: 10px 22px; border-radius: 40px; cursor: pointer;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); font-family: var(--serif);
+        }
+        .skip-btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+        
+        /* 视频结束后的“继续”按钮样式 */
+        .skip-btn.action-ready {
+            background: var(--gold); border-color: var(--gold-light); color: #fff;
+            box-shadow: 0 0 24px var(--gold-glow);
+            animation: btn-pulse 2s infinite; font-weight: 600; padding: 10px 28px;
+        }
+        @keyframes btn-pulse {
+            0%, 100% { box-shadow: 0 0 15px var(--gold-glow); transform: scale(1); }
+            50% { box-shadow: 0 0 35px var(--gold-glow); transform: scale(1.05); }
+        }
+
+        .video-fallback {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
+            background: #1a1815; color: #b5aea3; font-family: var(--serif); font-size: 16px; letter-spacing: 2px; text-align: center; z-index: 1;
+        }
+        .video-fallback.show { display: flex; }
+        .video-fallback .icon { font-size: 44px; margin-bottom: 14px; opacity: .5; }
+
+        /* ===== 阶段1: 书信入口 (金箔信封质感) ===== */
+        #stage-letter { background: var(--paper); z-index: 20; }
+        #stage-letter .inner { padding: 40px 28px; max-width: 560px; margin: 0 auto; text-align: center; }
+        
+        .svg-envelope {
+            width: 80px; height: 80px; margin-bottom: 24px;
+            filter: drop-shadow(0 8px 16px rgba(212, 175, 55, 0.2));
+            animation: env-float 4s ease-in-out infinite;
+        }
+        @keyframes env-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        
+        #stage-letter .letter-title { font-family: var(--hand); font-size: 48px; color: var(--ink); letter-spacing: 6px; margin-bottom: 12px; }
+        #stage-letter .letter-sub { font-family: var(--serif); font-size: 15px; color: var(--ink-soft); line-height: 2.2; margin-bottom: 40px; letter-spacing: 1px; }
+        #stage-letter .letter-sub em { font-style: normal; color: var(--gold); font-weight: 600; border-bottom: 1px solid var(--gold-light); }
+        
+        #stage-letter .btn-open {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--ink); color: var(--paper); border: none; padding: 18px 48px;
+            font-family: var(--serif); font-size: 15px; letter-spacing: 4px; border-radius: 60px;
+            cursor: pointer; transition: all .4s ease; box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+        }
+        #stage-letter .btn-open::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: skewX(-20deg); transition: 0.6s;
+        }
+        #stage-letter .btn-open:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); background: var(--gold); }
+        #stage-letter .btn-open:hover::after { left: 150%; }
+        #stage-letter .btn-open .arrow { margin-left: 8px; transition: transform .3s ease; }
+        #stage-letter .btn-open:hover .arrow { transform: translateX(6px); }
+
+        /* ===== 阶段3: 照片时间线（Polaroid 拍立得风格） ===== */
+        #stage-timeline { background: var(--paper); overflow: hidden; }
+        #stage-timeline .inner { padding: 0; position: relative; overflow: hidden; width: 100%; height: 100%; }
+
+        .tl-header { position: absolute; top: 24px; left: 0; right: 0; text-align: center; z-index: 20; pointer-events: none; }
+        .tl-header .label { font-family: var(--hand); font-size: 18px; color: var(--ink); letter-spacing: 4px; }
+        .tl-header .progress { font-size: 12px; color: var(--ink-light); margin-top: 4px; font-family: var(--serif); }
+        
+        .tl-skip-btn {
+            position: absolute; top: 24px; right: 24px; z-index: 25;
+            background: rgba(255,255,255,0.6); border: 1px solid var(--paper-dark); color: var(--ink-soft);
+            font-size: 12px; letter-spacing: 2px; padding: 8px 20px; border-radius: 30px; cursor: pointer;
+            transition: all .3s ease; backdrop-filter: blur(8px); font-family: var(--serif);
+        }
+        .tl-skip-btn:hover { background: #fff; color: var(--ink); box-shadow: var(--shadow-sm); }
+
+        .tl-track-wrap { width: 100%; height: 100%; overflow: hidden; position: relative; cursor: grab; }
+        .tl-track-wrap:active { cursor: grabbing; }
+        .tl-track { display: flex; height: 100%; transition: transform 0.6s cubic-bezier(0.25, 1, 0.35, 1); align-items: center; padding: 0 8vw; }
+
+        /* 拍立得卡片设计 */
+        .tl-slide {
+            flex: 0 0 72vw; max-width: 400px; height: 74vh; max-height: 620px; margin: 0 2vw;
+            background: #fff; padding: 16px 16px 24px 16px; border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(42, 39, 36, 0.08), 0 1px 3px rgba(0,0,0,0.03);
+            display: flex; flex-direction: column; transition: transform 0.5s ease, box-shadow 0.5s ease;
+            position: relative; cursor: pointer;
+        }
+        .tl-slide::before { /* 顶部模拟纸胶带 */
+            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-2deg);
+            width: 80px; height: 24px; background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 2;
+            backdrop-filter: blur(2px);
+        }
+        .tl-slide.active-slide { box-shadow: 0 20px 50px rgba(42, 39, 36, 0.15); transform: scale(1.03) translateY(-10px); }
+        .tl-slide.viewed-slide::after { content: "✓"; position: absolute; bottom: 20px; right: 20px; font-size: 16px; color: var(--gold); opacity: 0.6; }
+
+        .tl-slide .slide-img {
+            width: 100%; height: 68%; background: #E5E0D5; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; border-radius: 2px;
+        }
+        .tl-slide .slide-img img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .tl-slide .slide-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; text-align: center; padding-top: 16px; }
+        .tl-slide .slide-date { font-family: var(--hand); font-size: 24px; color: var(--ink); margin-bottom: 6px; }
+        .tl-slide .slide-title { font-family: var(--serif); font-size: 14px; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 8px; }
+        .tl-slide .slide-text { font-family: var(--serif); font-size: 13px; color: var(--ink-light); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 0 10px; }
+
+        .tl-nav {
+            position: absolute; top: 50%; transform: translateY(-50%); z-index: 15;
+            width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--paper-dark); box-shadow: var(--shadow-sm); cursor: pointer;
+            font-size: 20px; color: var(--ink); display: flex; align-items: center; justify-content: center;
+            transition: all .3s ease;
+        }
+        .tl-nav:hover { background: #fff; box-shadow: var(--shadow-md); transform: translateY(-50%) scale(1.08); }
+        .tl-nav.prev { left: 16px; } .tl-nav.next { right: 16px; }
+        .tl-nav.hidden { opacity: 0; pointer-events: none; }
+
+        .tl-dots { position: absolute; bottom: 24px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; z-index: 15; pointer-events: none; }
+        .tl-dots span { width: 6px; height: 6px; border-radius: 50%; background: #D1CCC1; transition: all .4s ease; pointer-events: auto; cursor: pointer; }
+        .tl-dots span.active { background: var(--gold); transform: scale(1.5); }
+        .tl-dots span.done { background: var(--ink-light); }
+
+        /* ===== 阶段5: 亮灯 + 尾声 ===== */
+        #stage-finale { background: var(--paper); }
+        #stage-finale .inner { padding: 40px 28px; max-width: 520px; margin: 0 auto; text-align: center; }
+        #stage-finale h2 { font-family: var(--hand); font-size: 36px; color: var(--ink); letter-spacing: 4px; margin-bottom: 16px; }
+        #stage-finale p { font-family: var(--serif); font-size: 15px; line-height: 2.2; color: var(--ink-soft); margin-bottom: 40px; }
+        
+        .lamp-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .lamp { width: 72px; height: 72px; cursor: pointer; transition: transform .4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .lamp:hover { transform: scale(1.1); }
+        .lamp circle.bulb { fill: transparent; stroke: var(--ink); stroke-width: 1.5; transition: all .6s ease; }
+        .lamp.lit circle.bulb { fill: var(--gold-light); stroke: var(--gold); }
+        .lamp.lit { filter: drop-shadow(0 0 30px rgba(212, 175, 55, 0.6)); }
+        
+        .lamp-text { font-family: var(--hand); font-size: 20px; color: var(--ink-soft); transition: color .6s ease; }
+        .lamp-text.lit-text { color: var(--gold); text-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
+        
+        .footer-note { margin-top: 48px; font-family: var(--serif); font-size: 14px; color: var(--ink-light); letter-spacing: 2px; }
+
+        /* ===== 灯箱（Lightbox） ===== */
+        .lightbox-overlay {
+            position: fixed; inset: 0; z-index: 1000; background: rgba(26, 24, 21, 0.95);
+            backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center;
+            padding: 20px; opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility .4s ease;
+        }
+        .lightbox-overlay.open { opacity: 1; visibility: visible; }
+        .lightbox-panel {
+            background: var(--paper); max-width: 600px; width: 100%; max-height: 90vh;
+            border-radius: var(--radius-sm); padding: 32px; position: relative;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6); transform: scale(0.98) translateY(10px);
+            transition: transform .5s cubic-bezier(0.25, 1, 0.5, 1); overflow-y: auto;
+        }
+        .lightbox-overlay.open .lightbox-panel { transform: scale(1) translateY(0); }
+        
+        .lb-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 28px; color: var(--ink); cursor: pointer; transition: transform .3s; }
+        .lb-close:hover { transform: rotate(90deg); }
+        
+        .lb-date { font-family: var(--hand); font-size: 22px; color: var(--ink); display: block; margin-bottom: 16px; border-bottom: 1px solid var(--paper-dark); padding-bottom: 12px; }
+        
+        .lb-photo-wrap { position: relative; width: 100%; aspect-ratio: 3/4; border-radius: 4px; overflow: hidden; margin-bottom: 16px; background: #DCD7CB; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
+        .lb-photo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--ink); box-shadow: var(--shadow-sm); transition: all .3s; z-index: 5; }
+        .lb-nav:hover { background: #fff; transform: translateY(-50%) scale(1.1); }
+        .lb-nav.prev { left: 12px; } .lb-nav.next { right: 12px; }
+        
+        .lb-text { font-family: var(--serif); font-size: 15px; line-height: 1.8; color: var(--ink-soft); text-align: center; margin-top: 12px; }
+
+        /* ===== 生日彩蛋层 ===== */
+        #birthday-layer {
+            position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center;
+            background: rgba(26, 24, 21, 0.85); backdrop-filter: blur(16px); padding: 20px;
+        }
+        #birthday-layer.show { display: flex; }
+        
+        .bday-card {
+            background: linear-gradient(165deg, #FFFCF5 0%, #F5F0E1 100%);
+            border-radius: var(--radius-lg); max-width: 460px; width: 100%; padding: 40px 32px; text-align: center;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+            position: relative; overflow: hidden; animation: card-pop .6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        
+        /* ... 保留原有精美蛋糕与蜡烛 CSS ... */
+        .cake-wrapper { position: relative; z-index: 1; margin: 16px auto; display: flex; flex-direction: column; align-items: center; }
+        .cake-plate { width: 200px; height: 14px; background: radial-gradient(ellipse at 50% 50%, #EBE5D8, #D5CDBC); border-radius: 50%; margin-top: -4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .08); }
+        .cake-body { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+        .layer-1 { width: 190px; height: 34px; background: #C08A5E; border-radius: 50% 50% 8px 8px / 20% 20% 8px 8px; margin-bottom: -6px; }
+        .layer-2 { width: 160px; height: 30px; background: #D4B086; border-radius: 50% 50% 8px 8px / 20% 20% 8px 8px; margin-bottom: -6px; }
+        .layer-3 { width: 130px; height: 28px; background: #E8CEB0; border-radius: 50% 50% 8px 8px / 20% 20% 8px 8px; }
+        .cream-top { width: 100px; height: 18px; background: #FFF; border-radius: 50%; margin-top: -6px; }
+        
+        .candles-container { display: flex; justify-content: center; gap: 16px; z-index: 5; margin-top: -8px; margin-bottom: -2px; }
+        .candle-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform .3s; }
+        .candle-body { width: 22px; height: 44px; background: #F8C8C8; border-radius: 3px; position: relative; }
+        .candle-body .wick { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 2px; height: 7px; background: #2D1F10; }
+        .candle-item:nth-child(2) .candle-body { background: #F7DC8A; } .candle-item:nth-child(3) .candle-body { background: #B8D8F0; }
+        .flame { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 18px; height: 26px; background: #FF9A3E; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; transition: opacity .4s; }
+        .candle-item.out .flame { opacity: 0; } .candle-item.out .candle-body { opacity: 0.6; transform: scale(0.9); height: 40px; }
+
+        .letter-box { max-height: 0; overflow: hidden; transition: max-height 1s ease, opacity 0.8s ease; opacity: 0; }
+        .letter-box.reveal { max-height: 700px; opacity: 1; margin-top: 20px; }
+        .letter-paper { background: #fff; border-radius: 12px; padding: 24px; border: 1px solid var(--paper-dark); box-shadow: var(--shadow-sm); text-align: center; }
+        .letter-photo { margin: 16px 0; border-radius: 6px; overflow: hidden; background: var(--paper-dark); padding: 4px; border: 1px solid #EAE5D9; }
+        .letter-photo img { width: 100%; border-radius: 4px; }
+        
+        .bday-close { margin-top: 24px; background: var(--ink); color: #fff; border: none; padding: 12px 32px; border-radius: 30px; font-family: var(--serif); cursor: pointer; transition: background .3s; }
+        .bday-close:hover { background: var(--gold); }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 640px) {
+            .video-stage video { max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none; }
+            .skip-btn { top: 20px; right: 20px; font-size: 12px; padding: 8px 16px; }
+            .tl-slide { flex: 0 0 85vw; height: 70vh; padding: 12px 12px 16px 12px; }
+            .tl-slide .slide-date { font-size: 20px; }
+            #stage-letter .letter-title { font-size: 36px; }
+            .bday-card { padding: 32px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 主容器 -->
+    <div id="app">
+
+        <!-- 阶段0: 开场视频 -->
+        <div class="stage active video-stage" id="stage-video1">
+            <div class="inner">
+                <!-- 保留 controls 原生进度条 -->
+                <video id="video1" playsinline controls preload="metadata" muted>
+                    <source src="./223.mov" type="video/mp4" />
+                </video>
+                <div class="video-fallback" id="fallback1">
+                    <div class="icon">🎞️</div>
+                    <p>开场视频未找到<br /><span class="sub">请将 223.mov 放在同目录下</span></p>
+                </div>
+                <!-- 取消了全局遮罩，原生进度条完美可点 -->
+                <p class="caption">小成本制作，仅供参考</p>
+                <button class="skip-btn" id="skip1">跳过 Skip</button>
+            </div>
+        </div>
+
+        <!-- 阶段1: 书信入口 -->
+        <div class="stage" id="stage-letter">
+            <div class="inner">
+                <!-- 替换为精美的 SVG 信封 -->
+                <svg class="svg-envelope" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" />
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                </svg>
+                <h1 class="letter-title">致秦彻</h1>
+                <p class="letter-sub">
+                    前面的有点无厘头<br />
+                    后面的才是真正的高光时刻（或许）。<br />
+                    如果你准备好了，就 <em>打开它</em> 吧。
+                </p>
+                <button class="btn-open" id="btnOpenLetter">
+                    拆开信笺 <span class="arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 阶段2: 中间视频 -->
+        <div class="stage video-stage" id="stage-video2">
+            <div class="inner">
+                <video id="video2" playsinline controls preload="metadata" muted>
+                    <source src="./61169_raw.MP4" type="video/mp4" />
+                </video>
+                <div class="video-fallback" id="fallback2">
+                    <div class="icon">🎥</div>
+                    <p>中间视频未找到</p>
+                </div>
+                <p class="caption">正经版的高光剪辑🌟</p>
+                <button class="skip-btn" id="skip2">跳过 Skip</button>
+            </div>
+        </div>
+
+        <!-- 阶段3: 照片时间线 -->
+        <div class="stage" id="stage-timeline">
+            <div class="inner">
+                <div class="tl-header">
+                    <span class="label">Timeline</span>
+                    <div class="progress" id="tlProgress">0 / 0</div>
+                </div>
+                <button class="tl-skip-btn" id="tlSkipBtn">跳过 Skip</button>
+
+                <div class="tl-track-wrap" id="tlTrackWrap">
+                    <div class="tl-track" id="tlTrack"></div>
+                </div>
+
+                <button class="tl-nav prev hidden" id="tlPrev">‹</button>
+                <button class="tl-nav next hidden" id="tlNext">›</button>
+                <div class="tl-dots" id="tlDots"></div>
+            </div>
+        </div>
+
+        <!-- 阶段4: 结尾视频 -->
+        <div class="stage video-stage" id="stage-video3">
+            <div class="inner">
+                <video id="video3" playsinline controls preload="metadata">
+                    <source src="./copy_D33C08C3-F31A-4FF9-8A0C-E491494234CF.MOV" type="video/mp4" />
+                </video>
+                <div class="video-fallback" id="fallback3">
+                    <div class="icon">🎬</div>
+                    <p>结尾视频未找到</p>
+                </div>
+                <p class="caption">结尾依旧小成本制作</p>
+                <button class="skip-btn" id="skip3">跳过 Skip</button>
+            </div>
+        </div>
+
+        <!-- 阶段5: 亮灯 + 尾声 -->
+        <div class="stage" id="stage-finale">
+            <div class="inner">
+                <h2>尾声</h2>
+                <p>陪伴才是最长情的告白</p>
+                <div class="lamp-wrap">
+                    <svg class="lamp" id="lampBtn" viewBox="0 0 60 60">
+                        <circle class="bulb" cx="30" cy="24" r="14"></circle>
+                        <line x1="30" y1="38" x2="30" y2="52" stroke="currentColor" stroke-width="1.6"></line>
+                    </svg>
+                    <span class="lamp-text" id="lampText">为你，点一盏灯</span>
+                </div>
+                <p class="footer-note">特殊的日子或许有惊喜</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 灯箱 -->
+    <div class="lightbox-overlay" id="lightbox">
+        <div class="lightbox-panel">
+            <button class="lb-close" id="lbClose">×</button>
+            <span class="lb-date" id="lbDate"></span>
+            <div class="lb-photo-wrap">
+                <button class="lb-nav prev" id="lbPrev">‹</button>
+                <div id="lbPhoto"></div>
+                <button class="lb-nav next" id="lbNext">›</button>
+            </div>
+            <p class="lb-text" id="lbText"></p>
+        </div>
+    </div>
+
+    <!-- 彩纸 Canvas -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- 生日彩蛋 -->
+    <div id="birthday-layer">
+        <div class="bday-card">
+            <span class="eyebrow" style="color:var(--gold); font-family:var(--hand); font-size:18px;">✦ Surprise ✦</span>
+            <h1 style="font-family:var(--hand); font-size:32px; margin: 8px 0;">- 生日快乐 -</h1>
+            <p style="font-family:var(--serif); color:var(--ink-soft); font-size:13px;">有点简陋的生日蛋糕，意会一下吧</p>
+
+            <div class="cake-wrapper">
+                <div class="cake-body">
+                    <div class="layer-3"></div><div class="layer-2"></div><div class="layer-1"></div><div class="cream-top"></div>
+                </div>
+                <div class="candles-container">
+                    <div class="candle-item lit"><div class="candle-body"><div class="wick"></div><div class="flame"></div></div></div>
+                    <div class="candle-item lit"><div class="candle-body"><div class="wick"></div><div class="flame"></div></div></div>
+                    <div class="candle-item lit"><div class="candle-body"><div class="wick"></div><div class="flame"></div></div></div>
+                </div>
+                <div class="cake-plate"></div>
+            </div>
+
+            <p id="bdayHint" style="font-family:var(--serif); font-size:14px; color:var(--ink-light); margin: 12px 0;">👆 点击蜡烛，吹灭它</p>
+
+            <div class="letter-box" id="letterBox">
+                <div class="letter-paper">
+                    <h3 style="font-family:var(--hand); font-size:22px; margin-bottom:12px;">✧ Dear ✧</h3>
+                    <p style="font-family:var(--serif); font-size:14px; color:var(--ink-soft); line-height:2;">
+                        一直想送什么当生日礼物，然后刷到潘多拉能够刻字。<br>临时跑到潘多拉匆匆忙忙地刻下祝福。<br>愿生日快乐。长岁常安。
+                    </p>
+                    <div class="letter-photo">
+                        <img src="./pictures/0707.jpg" alt="生日照片" onerror="this.style.display='none'" />
+                    </div>
+                </div>
+            </div>
+
+            <button class="bday-close" id="bdayClose">end ✨</button>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            timeline: [{
+                date: "2025.3.29", title: "第1次约会", cover: "./pictures/1.jpg",
+                photos: [{ src: "./pictures/1.jpg", text: "刚见面的时候真的“哇塞，好帅啊”" }, { src: "./pictures/2.jpg", text: "我好喜欢这张照片" }, { src: "./pictures/3.JPG", text: "那时候多少已经崩溃了，但过几天想起来还蛮好笑的，就把这张照片要来了" }],
+                text: "生活中总是充满着意外和巧合。"
+            }, {
+                date: "2025.4.11", title: "第2次约会", cover: "./pictures/4.jpg",
+                photos: [{ src: "./pictures/4.jpg", text: "没找到什么照片，只有一个桂满陇的鸡爪盘" }],
+                text: "那时候说穿孔会上瘾，没想到后面还真的又打了俩个耳骨钉"
+            }, {
+                date: "2025.4.27", title: "第3次约会", cover: "./pictures/5.jpg",
+                photos: [{ src: "./pictures/5.jpg", text: "绝对下雨了，还刮了很大的风" }, { src: "./pictures/6.jpg", text: "很有意思的密室，很有趣的队友，还有一段神奇的录像" }],
+                text: "那天下了很大的雨"
+            }, {
+                date: "2025.5.11", title: "第5次约会", cover: "./pictures/7.jpg",
+                photos: [{ src: "./pictures/7.jpg", text: "祭奠一下我刚染的红毛配上羊毛卷" }, { src: "./pictures/8.jpg", text: "好窄的loft，好艰难的姿势" }],
+                text: "好吧这里不知道说什么，晚饭挺难吃的"
+            }, {
+                date: "2025.6.23", title: "第5次约会", cover: "./pictures/9.jpg",
+                photos: [{ src: "./pictures/9.jpg", text: "很大的瀑布，很难吃的甜品" }, { src: "./pictures/10.jpg", text: "很可爱的猫咪，幸好没有去看《酱园弄》" }],
+                text: "到现在还是不理解，换了两个地方拍大头照的意义是什么"
+            }, {
+                date: "2025.8.16", title: "第6次约会", cover: "./pictures/11.jpg",
+                photos: [{ src: "./pictures/11.jpg", text: "很不悬疑的悬疑剧，但是非常沉浸..." }],
+                text: "这天的话格外少，因为上班上emo了"
+            }, {
+                date: "2025.10.19-10.21", title: "第7次约会", cover: "./pictures/12.jpg",
+                photos: [{ src: "./pictures/12.jpg", text: "被p掉的消防栓。" }, { src: "./pictures/13.jpg", text: "可爱。" }],
+                text: "泉州的旅行是我状态最差的时候...但也是最开心的旅行。"
+            }, {
+                date: "2026.4.3", title: "第8次约会", cover: "./pictures/14.jpg",
+                photos: [{ src: "./pictures/14.jpg", text: "忘记画“l”,“e”了" }, { src: "./pictures/15.jpg", text: "又是下雨的一天，晚饭依旧难吃" }],
+                text: "中间的时间里一直在调整状态，浑浑噩噩地就来到了春天"
+            }, {
+                date: "2026.5.15", title: "第9次约会", cover: "./pictures/0.jpg",
+                photos: [{ src: "./pictures/0.jpg", text: "第一次玩悬疑本，还是很有意思的，中间虽然经历了很多事，但是人生总归是充满意外的，幸好意外只在我的身上" }],
+                text: "这真的是一张照片都没拍，放张不是很像的画吧"
+            }, {
+                date: "2026.6.28", title: "第10次约会", cover: "./pictures/16.jpg",
+                photos: [{ src: "./pictures/16.jpg", text: "我觉得挺好的，至少飞行棋赢了" }],
+                text: "期待了好久的四人约会"
+            }, {
+                date: "2026.6.29", title: "第11次约会", cover: "./pictures/17.png",
+                photos: [{ src: "./pictures/17.png", text: ":)" }, { src: "./pictures/18.png", text: "(:" }, { src: "./pictures/19.png", text: "^.^" }],
+                text: "非常喜欢的一组照片"
+            }, {
+                date: "2026.7.4", title: "第12次约会", cover: "./pictures/20.jpg",
+                photos: [{ src: "./pictures/20.jpg", text: "很期待、又很害怕到来的一次约会" }],
+                text: "不知道放什么，放个叠纸大楼吧"
+            }],
+            birthdayMonth: 7, birthdayDay: 7    
+        };
+
+        const state = { stage: 0, currentSlide: 0, viewedSlides: new Set(), totalSlides: CONFIG.timeline.length, lbItemIndex: 0, lbPhotoIndex: 0 };
+        const $ = id => document.getElementById(id);
+
+        /* ==========================================================
+           互动插件：欧泊石光泽点击星芒
+        ========================================================== */
+        document.addEventListener('click', (e) => {
+            const excluded = ['BUTTON', 'VIDEO', 'A', 'INPUT'];
+            if (excluded.includes(e.target.tagName)) return;
+            
+            const pt = document.createElement('div');
+            pt.className = 'click-particle';
+            const particles = ['✨', '✦', '✧', '·'];
+            const colors = ['#A8C9E8', '#F5D08A', '#E88282', '#D4AF37']; // 欧泊游彩配色
+            
+            pt.textContent = particles[Math.floor(Math.random() * particles.length)];
+            pt.style.color = colors[Math.floor(Math.random() * colors.length)];
+            pt.style.textShadow = '0 0 10px currentColor';
+            pt.style.left = e.clientX + 'px';
+            pt.style.top = e.clientY + 'px';
+            
+            document.body.appendChild(pt);
+            setTimeout(() => pt.remove(), 1000);
+        });
+
+        /* ==========================================================
+           视频播放与跳转逻辑（解决提前结束问题）
+        ========================================================== */
+        function goToStage(index) {
+            state.stage = index;
+            document.querySelectorAll('.stage').forEach(el => el.classList.remove('active'));
+            const keys = ['stage-video1', 'stage-letter', 'stage-video2', 'stage-timeline', 'stage-video3', 'stage-finale'];
+            $(keys[index]).classList.add('active');
+            
+            document.body.classList.toggle('locked', [0, 2, 4].includes(index));
+            
+            if(index === 0) $('video1').play().catch(()=>{});
+            if(index === 2) $('video2').play().catch(()=>{});
+            if(index === 4) $('video3').play().catch(()=>{});
+        }
+
+        // 核心改造：视频结束后不自动跳，按钮变为高亮的“继续阅读”
+        function setupVideoEnd(videoId, btnId, nextAction) {
+            const vid = $(videoId);
+            const btn = $(btnId);
+            
+            vid.addEventListener('ended', () => {
+                btn.classList.add('action-ready');
+                btn.innerHTML = '继续前进 <span>→</span>';
+            });
+            
+            btn.addEventListener('click', () => {
+                vid.pause();
+                nextAction();
+            });
+        }
+
+        setupVideoEnd('video1', 'skip1', () => goToStage(1));
+        $('btnOpenLetter').addEventListener('click', () => goToStage(2));
+        setupVideoEnd('video2', 'skip2', () => { goToStage(3); initTimeline(); });
+        $('tlSkipBtn').addEventListener('click', () => goToStage(4));
+        setupVideoEnd('video3', 'skip3', () => goToStage(5));
+
+        /* ==========================================================
+           时间线与拍立得逻辑
+        ========================================================== */
+        function initTimeline() {
+            $('tlTrack').innerHTML = ''; $('tlDots').innerHTML = '';
+            CONFIG.timeline.forEach((item, idx) => {
+                const slide = document.createElement('div');
+                slide.className = 'tl-slide';
+                slide.innerHTML = `
+                  <div class="slide-img"><img src="${item.cover}" onerror="this.style.display='none'"></div>
+                  <div class="slide-body">
+                    <div class="slide-date">${item.date}</div>
+                    <div class="slide-title">${item.title}</div>
+                    <p class="slide-text">${item.text}</p>
+                  </div>`;
+                slide.addEventListener('click', () => openLightbox(idx));
+                $('tlTrack').appendChild(slide);
+                
+                const dot = document.createElement('span');
+                dot.addEventListener('click', () => goToSlide(idx));
+                $('tlDots').appendChild(dot);
+            });
+            goToSlide(0);
+            $('tlPrev').classList.remove('hidden'); $('tlNext').classList.remove('hidden');
+        }
+
+        function goToSlide(idx) {
+            if (idx < 0 || idx >= state.totalSlides) return;
+            state.currentSlide = idx;
+            const slides = document.querySelectorAll('.tl-slide');
+            if(!slides.length) return;
+            
+            const w = slides[0].offsetWidth + parseFloat(getComputedStyle(slides[0]).marginLeft) * 2;
+            $('tlTrack').style.transform = `translateX(${-idx * w}px)`;
+            
+            slides.forEach((el, i) => el.classList.toggle('active-slide', i === idx));
+            $('tlPrev').classList.toggle('hidden', idx === 0);
+            $('tlNext').classList.toggle('hidden', idx === state.totalSlides - 1);
+            
+            document.querySelectorAll('#tlDots span').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+                el.classList.toggle('done', state.viewedSlides.has(i));
+            });
+            $('tlProgress').textContent = `${state.viewedSlides.size} / ${state.totalSlides}`;
+        }
+        
+        $('tlPrev').addEventListener('click', () => goToSlide(state.currentSlide - 1));
+        $('tlNext').addEventListener('click', () => goToSlide(state.currentSlide + 1));
+
+        /* 灯箱 */
+        function openLightbox(idx) {
+            state.lbItemIndex = idx; state.lbPhotoIndex = 0;
+            renderLightbox();
+            $('lightbox').classList.add('open');
+            state.viewedSlides.add(idx);
+            goToSlide(state.currentSlide); // update dots
+        }
+        function renderLightbox() {
+            const item = CONFIG.timeline[state.lbItemIndex];
+            const photos = item.photos || [{ src: '', text: item.text }];
+            const curr = photos[state.lbPhotoIndex];
+            
+            $('lbDate').textContent = item.date;
+            $('lbPhoto').innerHTML = `<img src="${curr.src}" onerror="this.style.display='none'">`;
+            $('lbText').textContent = curr.text;
+        }
+        $('lbClose').addEventListener('click', () => $('lightbox').classList.remove('open'));
+        $('lbPrev').addEventListener('click', () => { const p = CONFIG.timeline[state.lbItemIndex].photos; state.lbPhotoIndex = (state.lbPhotoIndex - 1 + p.length) % p.length; renderLightbox(); });
+        $('lbNext').addEventListener('click', () => { const p = CONFIG.timeline[state.lbItemIndex].photos; state.lbPhotoIndex = (state.lbPhotoIndex + 1) % p.length; renderLightbox(); });
+
+        /* 亮灯 */
+        let lit = false;
+        $('lampBtn').addEventListener('click', () => {
+            lit = !lit;
+            $('lampBtn').classList.toggle('lit', lit);
+            $('lampText').textContent = lit ? "我不再害怕离别，我们终将在无数次的回忆里重逢" : "为你，点一盏灯";
+            $('lampText').classList.toggle('lit-text', lit);
+        });
+
+        /* ==========================================================
+           生日彩蛋交互
+        ========================================================== */
+        const candles = document.querySelectorAll('.candle-item');
+        let allBlown = false;
+        candles.forEach(c => c.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if(this.classList.contains('out') || allBlown) return;
+            this.classList.remove('lit'); this.classList.add('out');
+            
+            if([...candles].every(x => x.classList.contains('out'))) {
+                allBlown = true;
+                $('bdayHint').style.opacity = 0;
+                $('letterBox').classList.add('reveal');
+                runConfetti(80);
+            }
+        }));
+        
+        $('bdayClose').addEventListener('click', () => {
+            if(allBlown) {
+                const isR = $('letterBox').classList.contains('reveal');
+                $('letterBox').classList.toggle('reveal', !isR);
+                $('bdayClose').textContent = isR ? '再看一眼 ✨' : 'end ✨';
+            }
+        });
+
+        if (new URLSearchParams(location.search).get('preview') === 'bday' || (new Date().getMonth() + 1 === CONFIG.birthdayMonth && new Date().getDate() === CONFIG.birthdayDay)) {
+            window.addEventListener('load', () => setTimeout(() => { $('birthday-layer').classList.add('show'); runConfetti(50); }, 1200));
+        }
+
+        /* 彩纸 */
+        function runConfetti(count) {
+            const canvas = $('confetti-canvas'); canvas.style.display = 'block';
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const ctx = canvas.getContext('2d');
+            const colors = ['#D4AF37', '#E88282', '#A8C9E8', '#F5D08A'];
+            const pieces = Array.from({length:count}).map(()=>({ x:Math.random()*canvas.width, y:-20-Math.random()*canvas.height*0.4, w:6+Math.random()*6, h:8+Math.random()*10, color:colors[Math.floor(Math.random()*colors.length)], speed:2+Math.random()*3, rot:Math.random()*360, rotSpeed:Math.random()*4-2 }));
+            let frame = 0;
+            function draw() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                pieces.forEach(p => { p.y+=p.speed; p.rot+=p.rotSpeed; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180); ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore(); });
+                if(frame++ < 200) requestAnimationFrame(draw); else canvas.style.display='none';
+            } draw();
+        }
+
+        document.body.classList.add('locked');
+        $('video1').play().catch(()=>{});
+    </script>
+</body>
+</html>
